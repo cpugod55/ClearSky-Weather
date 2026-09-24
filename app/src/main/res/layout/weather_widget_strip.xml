@@ -1,0 +1,10 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root" android:orientation="horizontal" android:gravity="center_vertical" android:padding="10dp" android:background="@drawable/widget_background" android:layout_width="match_parent" android:layout_height="match_parent">
+ <LinearLayout android:orientation="vertical" android:layout_width="0dp" android:layout_weight="1.35" android:layout_height="match_parent" android:gravity="center_vertical">
+  <TextView android:id="@+id/widget_place" style="@style/WidgetPlace"/>
+  <LinearLayout android:orientation="horizontal" android:gravity="center_vertical" android:layout_width="wrap_content" android:layout_height="wrap_content"><ImageView android:id="@+id/widget_icon" android:layout_width="30dp" android:layout_height="30dp" android:tint="#FFFFFFFF"/><TextView android:id="@+id/widget_temp" style="@style/WidgetTemp"/></LinearLayout>
+  <TextView android:id="@+id/widget_condition" style="@style/WidgetCondition"/>
+ </LinearLayout>
+ <LinearLayout android:orientation="vertical" android:gravity="center" android:layout_width="0dp" android:layout_weight=".75" android:layout_height="match_parent"><ImageView android:id="@+id/widget_icon0" android:layout_width="23dp" android:layout_height="23dp" android:tint="#FFFFFFFF"/><TextView android:id="@+id/widget_day0" style="@style/WidgetDay"/></LinearLayout>
+ <LinearLayout android:orientation="vertical" android:gravity="center" android:layout_width="0dp" android:layout_weight=".75" android:layout_height="match_parent"><ImageView android:id="@+id/widget_icon1" android:layout_width="23dp" android:layout_height="23dp" android:tint="#FFFFFFFF"/><TextView android:id="@+id/widget_day1" style="@style/WidgetDay"/></LinearLayout>
+ <LinearLayout android:orientation="vertical" android:gravity="center" android:layout_width="0dp" android:layout_weight=".75" android:layout_height="match_parent"><ImageView android:id="@+id/widget_icon2" android:layout_width="23dp" android:layout_height="23dp" android:tint="#FFFFFFFF"/><TextView android:id="@+id/widget_day2" style="@style/WidgetDay"/></LinearLayout>
+</LinearLayout>
