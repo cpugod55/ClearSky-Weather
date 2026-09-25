@@ -12,6 +12,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -27,15 +28,44 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Build debug APK
-        run: gradle :app:assembleDebug
+      - name: Restore ClearSky signing key
+        env:
+          CLEARSKY_KEYSTORE_BASE64: ${{ secrets.CLEARSKY_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p "$HOME/.android-signing"
+          printf '%s' "$CLEARSKY_KEYSTORE_BASE64" | base64 --decode \
+            > "$HOME/.android-signing/clearsky-release.jks"
+          chmod 600 "$HOME/.android-signing/clearsky-release.jks"
+
+      - name: Build signed release APK
+        env:
+          ORG_GRADLE_PROJECT_CLEARSKY_STORE_FILE: /home/runner/.android-signing/clearsky-release.jks
+          ORG_GRADLE_PROJECT_CLEARSKY_KEY_ALIAS: ${{ secrets.CLEARSKY_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_CLEARSKY_STORE_PASSWORD: ${{ secrets.CLEARSKY_STORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_CLEARSKY_KEY_PASSWORD: ${{ secrets.CLEARSKY_KEY_PASSWORD }}
+        run: gradle :app:assembleRelease
+
+      - name: Get ClearSky version
+        id: version
+        run: |
+          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk ClearSky-${{ github.ref_name }}-debug.apk
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk \
+            "ClearSky-${{ steps.version.outputs.version }}.apk"
+
+      - name: Verify APK signature
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify \
+            --verbose \
+            --print-certs \
+            "ClearSky-${{ steps.version.outputs.version }}.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ClearSky-APK
-          path: ClearSky-${{ github.ref_name }}-debug.apk
+          name: ClearSky-${{ steps.version.outputs.version }}
+          path: ClearSky-${{ steps.version.outputs.version }}.apk
           if-no-files-found: error

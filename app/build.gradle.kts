@@ -1,15 +1,61 @@
-plugins { id("com.android.application"); id("org.jetbrains.kotlin.android"); id("org.jetbrains.kotlin.plugin.compose") }
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
+}
+
 android {
     namespace = "com.clearsky.weather"
     compileSdk = 36
-    defaultConfig { applicationId = "com.clearsky.weather"; minSdk = 30; targetSdk = 36; versionCode = 14; versionName = "1.3.6" }
-    buildFeatures { compose = true; buildConfig = true }
-    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
-    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+
+    defaultConfig {
+        applicationId = "com.clearsky.weather"
+        minSdk = 30
+        targetSdk = 36
+        versionCode = 14
+        versionName = "1.3.6"
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file(
+                providers.gradleProperty("CLEARSKY_STORE_FILE").get()
+            )
+            storePassword =
+                providers.gradleProperty("CLEARSKY_STORE_PASSWORD").get()
+            keyAlias =
+                providers.gradleProperty("CLEARSKY_KEY_ALIAS").get()
+            keyPassword =
+                providers.gradleProperty("CLEARSKY_KEY_PASSWORD").get()
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+        }
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    packaging {
+        resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
 }
+
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2025.08.01"))
     implementation("androidx.activity:activity-compose:1.11.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.9")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -17,6 +63,12 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.4")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
-kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
