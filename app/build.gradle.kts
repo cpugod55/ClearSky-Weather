@@ -2,7 +2,7 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android"); id(
 android {
     namespace = "com.clearsky.weather"
     compileSdk = 36
-    defaultConfig { applicationId = "com.clearsky.weather"; minSdk = 30; targetSdk = 36; versionCode = 13; versionName = "1.3.5" }
+    defaultConfig { applicationId = "com.clearsky.weather"; minSdk = 30; targetSdk = 36; versionCode = 14; versionName = "1.3.6" }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
