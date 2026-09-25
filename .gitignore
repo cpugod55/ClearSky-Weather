@@ -4,3 +4,7 @@ local.properties
 **/build/
 *.iml
 .DS_Store
+
+# Local release artifacts
+release-apk/
+github-signed-test/
