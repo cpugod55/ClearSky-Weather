@@ -63,7 +63,7 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.4")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.android.billingclient:billing-ktx:9.1.0")
+    implementation("com.android.billingclient:billing:9.1.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
