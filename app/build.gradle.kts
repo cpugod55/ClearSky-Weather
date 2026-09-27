@@ -12,8 +12,8 @@ android {
         applicationId = "com.clearsky.weather"
         minSdk = 30
         targetSdk = 36
-        versionCode = 23
-        versionName = "1.3.15"
+        versionCode = 24
+        versionName = "1.3.16"
     }
 
     signingConfigs {
@@ -63,6 +63,7 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.4")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.android.billingclient:billing-ktx:9.1.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
