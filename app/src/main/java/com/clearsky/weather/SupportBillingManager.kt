@@ -76,7 +76,7 @@ class SupportBillingManager(
 
     override fun onPurchasesUpdated(
         result: BillingResult,
-        purchases: MutableList<Purchase>?
+        purchases: List<Purchase>?
     ) {
         if (result.responseCode == BillingClient.BillingResponseCode.OK) {
             purchases.orEmpty().forEach(::handlePurchase)
