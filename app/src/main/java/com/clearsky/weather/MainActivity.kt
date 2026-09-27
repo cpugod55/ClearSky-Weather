@@ -55,15 +55,129 @@ class MainActivity : ComponentActivity() {
  private val perm=registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()){locate()}
  private val notifyPerm=registerForActivityResult(ActivityResultContracts.RequestPermission()){}
  private var notificationAlert by mutableStateOf<AlertItem?>(null)
- override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);notificationAlert=alertFromIntent(intent);AlertWorker.schedule(this);WeatherStatusWorker.schedule(this);if(Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(this,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)notifyPerm.launch(Manifest.permission.POST_NOTIFICATIONS);setContent{App()}}
- override fun onNewIntent(intent:Intent){super.onNewIntent(intent);setIntent(intent);notificationAlert=alertFromIntent(intent)}
- @Composable private fun App(){val p=remember{getSharedPreferences("prefs",0)};var theme by remember{mutableStateOf(p.getString("theme","system")?:"system")};val dark=theme=="dark"||(theme=="system"&&isSystemInDarkTheme());val thirtyDays=30L*24*60*60*1000;val now=System.currentTimeMillis();val installedAt=remember{val saved=p.getLong("donation_install_time",0L);if(saved>0L)saved else now.also{p.edit().putLong("donation_install_time",it).apply()}};var donate by remember{mutableStateOf(!p.getBoolean("donation_prompt_shown",false)&&now-installedAt>=thirtyDays)};fun finishDonationPrompt(){p.edit().putBoolean("donation_prompt_shown",true).apply();donate=false};MaterialTheme(colorScheme=if(dark)darkColorScheme(primary=Color(0xFF8FCBFF),surface=Color(0xFF101820))else lightColorScheme(primary=Color(0xFF00639A),surface=Color(0xFFF6FAFD))){if(donate)DonationDialog(onDismiss={finishDonationPrompt()},onDonate={finishDonationPrompt();openUrl("https://github.com/sponsors/cpugod55")});notificationAlert?.let{AlertDetailsDialog(it){notificationAlert=null}};WeatherScreen(theme){theme=it;p.edit().putString("theme",it).apply()}}}
- @Composable private fun WeatherScreen(theme:String,setTheme:(String)->Unit){
+ private var supportProducts by mutableStateOf<List<SupportProduct>>(emptyList())
+ private var supportPurchased by mutableStateOf(false)
+ private lateinit var supportBilling: SupportBillingManager
+
+ override fun onCreate(savedInstanceState: Bundle?) {
+  super.onCreate(savedInstanceState)
+  val prefs = getSharedPreferences("prefs", 0)
+  supportPurchased = prefs.getBoolean("support_completed", false)
+  supportBilling = SupportBillingManager(
+   this,
+   onProducts = { products -> runOnUiThread { supportProducts = products } },
+   onSupportRecognized = {
+    runOnUiThread {
+     supportPurchased = true
+     prefs.edit().putBoolean("support_completed", true).apply()
+    }
+   }
+  )
+  supportBilling.start()
+  notificationAlert = alertFromIntent(intent)
+  AlertWorker.schedule(this)
+  WeatherStatusWorker.schedule(this)
+  if (Build.VERSION.SDK_INT >= 33 &&
+   ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+  ) {
+   notifyPerm.launch(Manifest.permission.POST_NOTIFICATIONS)
+  }
+  setContent { App() }
+ }
+
+ override fun onDestroy() {
+  if (::supportBilling.isInitialized) supportBilling.close()
+  super.onDestroy()
+ }
+
+ override fun onNewIntent(intent: Intent) {
+  super.onNewIntent(intent)
+  setIntent(intent)
+  notificationAlert = alertFromIntent(intent)
+ }
+
+ @Composable
+ private fun App() {
+  val prefs = remember { getSharedPreferences("prefs", 0) }
+  var theme by remember { mutableStateOf(prefs.getString("theme", "system") ?: "system") }
+  val dark = theme == "dark" || (theme == "system" && isSystemInDarkTheme())
+  val now = System.currentTimeMillis()
+  val thirtyDays = 30L * 24 * 60 * 60 * 1000
+  val oneYear = 365L * 24 * 60 * 60 * 1000
+  val installedAt = remember {
+   val saved = prefs.getLong("donation_install_time", 0L)
+   if (saved > 0L) saved else now.also {
+    prefs.edit().putLong("donation_install_time", it).apply()
+   }
+  }
+  val nextPromptAt = remember {
+   val saved = prefs.getLong("support_next_prompt_at", 0L)
+   if (saved > 0L) {
+    saved
+   } else {
+    val migrated = if (prefs.getBoolean("donation_prompt_shown", false)) now + oneYear else installedAt + thirtyDays
+    prefs.edit().putLong("support_next_prompt_at", migrated).apply()
+    migrated
+   }
+  }
+  var showSupport by remember { mutableStateOf(false) }
+  var automaticPrompt by remember { mutableStateOf(false) }
+  val promptDue = !supportPurchased && supportProducts.isNotEmpty() && now >= nextPromptAt
+
+  LaunchedEffect(promptDue) {
+   if (promptDue) {
+    automaticPrompt = true
+    showSupport = true
+   }
+  }
+  LaunchedEffect(supportPurchased) {
+   if (supportPurchased) showSupport = false
+  }
+
+  fun dismissSupport() {
+   if (automaticPrompt && !supportPurchased) {
+    prefs.edit().putLong("support_next_prompt_at", System.currentTimeMillis() + oneYear).apply()
+   }
+   showSupport = false
+   automaticPrompt = false
+  }
+
+  MaterialTheme(
+   colorScheme = if (dark) {
+    darkColorScheme(primary = Color(0xFF8FCBFF), surface = Color(0xFF101820))
+   } else {
+    lightColorScheme(primary = Color(0xFF00639A), surface = Color(0xFFF6FAFD))
+   }
+  ) {
+   if (showSupport) {
+    SupportDialog(
+     products = supportProducts,
+     supported = supportPurchased,
+     onSupport = { supportBilling.purchase(it) },
+     onDismiss = { dismissSupport() }
+    )
+   }
+   notificationAlert?.let { AlertDetailsDialog(it) { notificationAlert = null } }
+   WeatherScreen(
+    theme = theme,
+    setTheme = {
+     theme = it
+     prefs.edit().putString("theme", it).apply()
+    },
+    supported = supportPurchased,
+    onSupport = {
+     automaticPrompt = false
+     showSupport = true
+    }
+   )
+  }
+ }
+ @Composable private fun WeatherScreen(theme:String,setTheme:(String)->Unit,supported:Boolean,onSupport:()->Unit){
   var places by remember{mutableStateOf(readPlaces())};var search by remember{mutableStateOf(false)};var settings by remember{mutableStateOf(false)};var results by remember{mutableStateOf<List<Place>>(emptyList())};var q by remember{mutableStateOf("")};val scope=rememberCoroutineScope();val pager=rememberPagerState(pageCount={places.size.coerceAtLeast(1)})
   LaunchedEffect(Unit){if(places.isEmpty()&&ContextCompat.checkSelfPermission(this@MainActivity,Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestLocation()}}
   Scaffold(containerColor=MaterialTheme.colorScheme.surface){pad->Column(Modifier.fillMaxSize().padding(pad)){
    Row(Modifier.fillMaxWidth().padding(12.dp,8.dp),verticalAlignment=Alignment.CenterVertically){Text("ClearSky",fontSize=26.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));TextButton(onClick={search=!search;settings=false}){Text(if(search)"Close" else "Locations")};TextButton(onClick={settings=!settings;search=false}){Text(if(settings)"Close" else "Settings")}}
-   AnimatedVisibility(settings){Column(Modifier.padding(horizontal=16.dp,vertical=4.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){Text("Appearance",fontWeight=FontWeight.Bold);Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf("system" to "System","light" to "Light","dark" to "Dark").forEach{(v,l)->FilterChip(selected=theme==v,onClick={setTheme(v)},label={Text(l)})}};AboutCard()}}
+   AnimatedVisibility(settings){Column(Modifier.padding(horizontal=16.dp,vertical=4.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){Text("Appearance",fontWeight=FontWeight.Bold);Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf("system" to "System","light" to "Light","dark" to "Dark").forEach{(v,l)->FilterChip(selected=theme==v,onClick={setTheme(v)},label={Text(l)})}};AboutCard(supported,onSupport)}}
    AnimatedVisibility(search){Column(Modifier.padding(horizontal=16.dp)){OutlinedTextField(q,{q=it},label={Text("City or ZIP/place name")},singleLine=true,modifier=Modifier.fillMaxWidth());Button(onClick={scope.launch{results=withContext(Dispatchers.IO){WeatherRepository.search(q)}}},modifier=Modifier.fillMaxWidth()){Text("Search")};OutlinedButton(onClick={requestLocation()},modifier=Modifier.fillMaxWidth()){Text("Use my current location")};results.forEach{r->Card(onClick={places=addSaved(r);search=false;scope.launch{pager.animateScrollToPage(places.indexOfFirst{same(it,r)}.coerceAtLeast(0))}},modifier=Modifier.fillMaxWidth().padding(vertical=3.dp)){Text("Save & view  ${r.name}",Modifier.padding(14.dp))}}}}
    if(places.isEmpty()) Box(Modifier.fillMaxSize().padding(24.dp),contentAlignment=Alignment.Center){Card(shape=RoundedCornerShape(22.dp)){Column(Modifier.padding(22.dp),horizontalAlignment=Alignment.CenterHorizontally){Text("Set your location",fontSize=22.sp,fontWeight=FontWeight.Bold);Spacer(Modifier.height(8.dp));Text("ClearSky needs location permission to show weather for your current location. You can also use Locations above to search for a city manually.",textAlign=TextAlign.Center);Spacer(Modifier.height(16.dp));Button(onClick={requestLocation()},modifier=Modifier.fillMaxWidth()){Text("Allow location")};OutlinedButton(onClick={search=true;settings=false},modifier=Modifier.fillMaxWidth()){Text("Search for a location instead")}}}} else HorizontalPager(state=pager,modifier=Modifier.weight(1f)){i->WeatherPage(places[i],i,places.size,{if(i>0){places=removeSaved(places[i]);scope.launch{pager.scrollToPage((i-1).coerceAtLeast(0))}}})}
    if(places.size>1) Row(Modifier.align(Alignment.CenterHorizontally).padding(7.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)){repeat(places.size){i->Box(Modifier.size(if(i==pager.currentPage)8.dp else 6.dp).clip(CircleShape).background(if(i==pager.currentPage)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant))}}
@@ -617,9 +731,45 @@ class MainActivity : ComponentActivity() {
   )
  }
 
- @Composable private fun DonationDialog(onDismiss:()->Unit,onDonate:()->Unit){AlertDialog(onDismissRequest=onDismiss,title={Text("Help fund ClearSky")},text={Text("ClearSky is free, has no ads, and does not require an account. If you enjoy it, a voluntary donation helps support continued development. You can dismiss this and use every feature normally. This is the only automatic donation request ClearSky will show.")},confirmButton={Button(onClick=onDonate){Text("Donate via GitHub Sponsors")}},dismissButton={TextButton(onClick=onDismiss){Text("Not now")}})}
  @Composable
- private fun AboutCard() {
+ private fun SupportDialog(
+  products: List<SupportProduct>,
+  supported: Boolean,
+  onSupport: (String) -> Unit,
+  onDismiss: () -> Unit
+ ) {
+  AlertDialog(
+   onDismissRequest = onDismiss,
+   title = { Text(if (supported) "Thanks for supporting ClearSky" else "Support ClearSky") },
+   text = {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+     if (supported) {
+      Text("Your support is appreciated. ClearSky will not show automatic support reminders again.")
+     } else {
+      Text("ClearSky is free with no ads or locked features. If you'd like to help support continued development, you can make a one-time purchase through Google Play.")
+      if (products.isEmpty()) {
+       Text(
+        "Support options are available when ClearSky is installed through Google Play.",
+        fontSize = 12.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+       )
+      } else {
+       products.forEach { product ->
+        Button(onClick = { onSupport(product.id) }, modifier = Modifier.fillMaxWidth()) {
+         Text("Support ${product.price}")
+        }
+       }
+      }
+     }
+    }
+   },
+   confirmButton = {},
+   dismissButton = { TextButton(onClick = onDismiss) { Text(if (supported) "Close" else "Not now") } }
+  )
+ }
+
+ @Composable
+ private fun AboutCard(supported: Boolean, onSupport: () -> Unit) {
   val signature = painterResource(R.drawable.zeus_signature)
   val signatureRatio = if (signature.intrinsicSize.height > 0f) {
    signature.intrinsicSize.width / signature.intrinsicSize.height
@@ -643,7 +793,7 @@ class MainActivity : ComponentActivity() {
     Spacer(Modifier.height(12.dp))
     Text("Weather and radar data come from their respective data providers. ClearSky itself has no advertising or analytics SDK.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(12.dp))
-    Button(onClick = { openUrl("https://github.com/sponsors/cpugod55") }, modifier = Modifier.fillMaxWidth()) { Text("Donate via GitHub Sponsors") }
+    Button(onClick = onSupport, enabled = !supported, modifier = Modifier.fillMaxWidth()) { Text(if (supported) "Thanks for supporting ClearSky" else "Support ClearSky") }
     OutlinedButton(onClick = { openUrl("https://github.com/cpugod55/ClearSky-Weather") }, modifier = Modifier.fillMaxWidth()) { Text("ClearSky on GitHub") }
    }
   }
