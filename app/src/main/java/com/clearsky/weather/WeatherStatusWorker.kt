@@ -4,7 +4,9 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.ContextCompat
@@ -33,11 +35,25 @@ class WeatherStatusWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, 
             if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(c, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
             val nm = c.getSystemService(NotificationManager::class.java)
             if (Build.VERSION.SDK_INT >= 26) nm.createNotificationChannel(NotificationChannel(CHANNEL, "Current weather", NotificationManager.IMPORTANCE_LOW))
+            val openWeather = Intent(c, MainActivity::class.java).apply {
+                action = "com.clearsky.weather.OPEN_WEATHER"
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            val contentIntent = PendingIntent.getActivity(
+                c,
+                1101,
+                openWeather,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
             val n = Notification.Builder(c, CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_menu_compass)
                 .setContentTitle("${w.currentTemp.toInt()}° • ${w.name}")
                 .setContentText("${WeatherRepository.label(w.code)} • Feels ${w.apparent.toInt()}°")
-                .setOngoing(true).setOnlyAlertOnce(true).setShowWhen(false).build()
+                .setContentIntent(contentIntent)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setShowWhen(false)
+                .build()
             nm.notify(1101, n)
         }
     }

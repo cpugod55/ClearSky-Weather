@@ -1,28 +1,43 @@
-ClearSky v1.3.5 one-time donation prompt
+# ClearSky 1.3.15
 
-# ClearSky 1.0
-Original privacy-first Android weather app inspired by the feature category of Quiet Sky, without copying its code, branding, artwork, or proprietary UI.
+ClearSky is a straightforward Android weather app focused on useful weather information without ads, accounts, analytics, or a ClearSky backend.
 
-## Included
-- GPS location and manual city/place search
-- Current conditions, feels-like, humidity, pressure, wind and gusts
-- 48-hour data / 24-hour card view
-- 10-day forecast
-- precipitation probability/amount, dew point, UV
-- sunrise/sunset
-- US AQI, PM2.5 and ozone
-- official NWS active alerts in the United States
-- interactive animated NWS radar in-app
-- home-screen widget
-- periodic NWS alert checks/notifications
-- on-device last-location cache
-- no account, ads, analytics or tracking SDK
+## Features
+- Tappable 10-day forecast with daily temperature/rain graphs and AM/PM hourly details
+- Current conditions, feels-like temperature, humidity, pressure, wind, and gusts
+- 24-hour forecast and 10-day forecast
+- Precipitation, dew point, UV, sunrise, and sunset
+- US AQI, PM2.5, and ozone data
+- Official NWS active weather alerts in the United States
+- Six radar and forecast views
+- Current location and manually saved locations
+- Home-screen weather widget
+- Background weather status and alert checks
+- Pull-to-refresh while keeping the last forecast on screen
+- Automatic refresh while the app is open and whenever it returns to the foreground
 
-## Data
-Forecast/geocoding/air quality: Open-Meteo. US alerts/radar: NOAA/NWS. Internet providers necessarily receive the IP address and requested coordinates. No ClearSky backend exists.
+## Privacy
+ClearSky has no account system, advertising SDK, analytics SDK, or tracking SDK. Saved locations and the donation-reminder state remain on the device. Weather and radar requests go directly to their data providers, which receive the requesting IP address and forecast coordinates as part of normal network requests.
+
+## Weather data
+Forecast, geocoding, and air-quality data are provided by Open-Meteo. United States alerts and radar data are provided by NOAA/NWS.
 
 ## Build
-Requires Android SDK 36 and JDK 17+. Open in Android Studio and build the `app` module, or run `./gradlew assembleDebug` after generating/using the Gradle wrapper.
+ClearSky requires Android SDK 36 and JDK 17 or newer. Open the project in Android Studio and build the `app` module.
 
-## Support ClearSky
-ClearSky is free and has no ads or analytics. The app waits 30 days before showing one automatic donation request, and never automatically asks again after that prompt is dismissed or used. Voluntary support remains available anytime through GitHub Sponsors for `cpugod55`.
+Release signing values are read from Gradle properties:
+- `CLEARSKY_STORE_FILE`
+- `CLEARSKY_STORE_PASSWORD`
+- `CLEARSKY_KEY_ALIAS`
+- `CLEARSKY_KEY_PASSWORD`
+
+## Support
+ClearSky is free to use. The app waits 30 days before showing its one automatic donation request. Dismissing or using that prompt prevents it from appearing automatically again. Voluntary support remains available from the About screen through GitHub Sponsors.
+
+## 1.3.15
+- Added pull-to-refresh to weather pages.
+- Kept the last successful forecast visible while new data loads.
+- Added automatic refresh every 15 minutes while the app is active.
+- Added a refresh when returning to the app.
+- Kept the previous forecast on screen if a refresh fails.
+- Cleaned up project wording and version metadata.

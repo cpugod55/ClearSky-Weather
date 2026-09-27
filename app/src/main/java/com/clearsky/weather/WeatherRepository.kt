@@ -47,14 +47,31 @@ object WeatherRepository {
         val allHours = (0 until ht.length()).map { i ->
             Hour(ht.getString(i), h.getJSONArray("temperature_2m").getDouble(i), h.getJSONArray("apparent_temperature").getDouble(i), h.getJSONArray("precipitation").getDouble(i), h.getJSONArray("precipitation_probability").optInt(i), h.getJSONArray("weather_code").getInt(i), h.getJSONArray("wind_speed_10m").getDouble(i), h.getJSONArray("wind_direction_10m").optInt(i), h.getJSONArray("wind_gusts_10m").getDouble(i), h.getJSONArray("relative_humidity_2m").getInt(i), h.getJSONArray("dew_point_2m").getDouble(i), h.getJSONArray("surface_pressure").getDouble(i), h.getJSONArray("uv_index").optDouble(i))
         }
-        val start = allHours.indexOfFirst { it.time.startsWith(currentHour) }.let { if (it < 0) 0 else it }
-        val hours = allHours.drop(start).take(48)
+        val hours = allHours
         val d = f.getJSONObject("daily")
         val dt = d.getJSONArray("time")
         val days = (0 until dt.length()).map { i -> Day(dt.getString(i), d.getJSONArray("temperature_2m_max").getDouble(i), d.getJSONArray("temperature_2m_min").getDouble(i), d.getJSONArray("precipitation_probability_max").optInt(i), d.getJSONArray("precipitation_sum").getDouble(i), d.getJSONArray("sunrise").getString(i), d.getJSONArray("sunset").getString(i), d.getJSONArray("uv_index_max").optDouble(i), d.getJSONArray("weather_code").getInt(i)) }
         val air = runCatching {
-            val a = j("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon&current=us_aqi,pm2_5,ozone&timezone=auto").getJSONObject("current")
-            Air(a.optInt("us_aqi"), a.optDouble("pm2_5"), a.optDouble("ozone"))
+            val a = j("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon&current=us_aqi,pm2_5,ozone,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen&timezone=auto").getJSONObject("current")
+            val pollenFields = listOf(
+                "Alder" to "alder_pollen",
+                "Birch" to "birch_pollen",
+                "Grass" to "grass_pollen",
+                "Mugwort" to "mugwort_pollen",
+                "Olive" to "olive_pollen",
+                "Ragweed" to "ragweed_pollen"
+            )
+            val pollenReadings = pollenFields.mapNotNull { (name, field) ->
+                if (!a.has(field) || a.isNull(field)) null
+                else a.optDouble(field).takeIf { it.isFinite() }?.let { name to it.coerceAtLeast(0.0) }
+            }
+            val pollen = if (pollenReadings.isEmpty()) {
+                null
+            } else {
+                val dominant = pollenReadings.maxByOrNull { it.second } ?: ("Pollen" to 0.0)
+                Pollen(dominant.second, dominant.first, dominant.second)
+            }
+            Air(a.optInt("us_aqi"), a.optDouble("pm2_5"), a.optDouble("ozone"), pollen)
         }.getOrNull()
         val alerts = if (lat in 18.0..72.0 && lon in -180.0..-60.0) runCatching { nwsAlerts(lat, lon) }.getOrDefault(emptyList()) else emptyList()
         return Weather(name, lat, lon, f.optString("timezone"), c.getDouble("temperature_2m"), c.getDouble("apparent_temperature"), c.getInt("relative_humidity_2m"), c.getDouble("wind_speed_10m"), c.optInt("wind_direction_10m"), c.getDouble("wind_gusts_10m"), c.getDouble("surface_pressure"), c.getInt("weather_code"), hours, days, air, alerts)

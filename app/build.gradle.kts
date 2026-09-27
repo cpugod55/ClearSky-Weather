@@ -12,8 +12,8 @@ android {
         applicationId = "com.clearsky.weather"
         minSdk = 30
         targetSdk = 36
-        versionCode = 14
-        versionName = "1.3.6"
+        versionCode = 23
+        versionName = "1.3.15"
     }
 
     signingConfigs {
